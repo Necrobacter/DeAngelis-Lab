@@ -1,0 +1,173 @@
+---
+title: "EMF index"
+author: "Eddy Hernandez"
+date: "Today"
+output: html_document
+editor_options: 
+chunk_output_type: inline
+---
+
+```{r}
+library(devtools)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(multifunc)
+library(moments)
+library(reshape2)
+```
+
+<!-- Test devtools -->
+<!-- Reads in CSV's. -->
+<!-- tcn is missing one sample number. Other df's have 48 entries (24 for each time point). Tcn has 23 (No T2 or T6), organized based on plot number. -->
+
+```{r}
+lipid <- read.csv("hf303-01-lipid-p.csv")
+enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
+```
+
+<!-- Makes column and variable names uniform -->
+
+```{r}
+names(lipid)[names(lipid) == "warming"] <- "treatment"
+names(lipid)[names(lipid) == "soil.type"] <- "soil"
+names(enzymeAct)[names(enzymeAct) == "warming"] <- "treatment"
+enzymeAct$treatment[enzymeAct$treatment == "DC"] <- "C"
+```
+
+<!-- Puts column names in order -->
+
+```{r}
+lipid <- lipid[,c("treatment","soil","plot","timepoint","doy","date","lipidp.dry")]
+enzymeAct <- enzymeAct[,c("sample.id","treatment","soil","plot","timepoint","doy","date","enzyme","eea")]
+```
+
+<!-- Creates a variable with the function names we want. Creates variable indexes with the column position of the functions we want from each data frame we are using -->
+
+```{r}
+vars <- qw(plot,treatment,soil,timepoint,sample.id,enzyme,eea,lipidp.dry,BG,CBH,BX,NAG,PO,HPO)
+varIdxEnz <- which(names(enzymeAct) %in% vars)
+varIdxLip <- which(names(lipid) %in% vars)
+plotorder <- c(1,3,5,6,8,9,10,12,13,15,16,17)
+```
+
+```{r}
+enzymeSimp <- subset(enzymeAct, select = varIdxEnz, enzymeAct$timepoint=="T2" | enzymeAct$timepoint == "T6")
+lipidSimp <- subset(lipid, select = varIdxLip, lipid$timepoint == "T2" | lipid$timepoint == "T6")
+```
+
+<!-- Turns enzyme observations into Variables PHOS was only measured at T6 so it should be omitted. -->
+
+```{r}
+enzOrg <- pivot_wider(enzymeSimp, id_cols = c("soil","timepoint","treatment", "plot", "sample.id"), names_from = enzyme, values_from = eea)
+enzOrg <- subset(enzOrg, select = c(qw(plot,treatment,soil,timepoint,BG,CBH,BX,NAG,PO,HPO)))
+```
+
+```{r}
+enzOrg$ID <- as.factor(paste(enzOrg$treatment, enzOrg$soil,enzOrg$timepoint,enzOrg$plot,sep = "." ))
+lipidSimp$ID <- as.factor(paste(lipidSimp$treatment, lipidSimp$soil,lipidSimp$timepoint,lipidSimp$plot,sep = "." ))
+```
+
+```{r}
+organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)], by = "ID")
+```
+
+```{r}
+organizedchartTreat <-melt(organizedchart[,c(3,6:12)], id.vars="treatment")
+organizedchartSoil <-melt(organizedchart[,c(4,6:12)], id.vars="soil")
+organizedchartTime <-melt(organizedchart[,c(5,6:12)], id.vars="timepoint")
+```
+
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("Horizon") +
+  ylab("Standard mean")
+```
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=treatment, y=value),data=organizedchartTreat)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("treatment") +
+  ylab("Standard mean")
+```
+
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=timepoint, y=value),data=organizedchartTime)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("Time Point") +
+  ylab("Standard mean")
+```
+<!-- EMF chart from all functions and variables. -->
+
+```{r}
+organizedchart<-cbind(organizedchart, getStdAndMeanFunctions(organizedchart ,c("BG","CBH","BX","NAG","PO","HPO","lipidp.dry")))
+```
+
+```{r fig.width=1, fig.height=1 }
+ggplot(aes(x=treatment, y=meanFunction),data=organizedchart)+geom_boxplot(size=1)+
+  theme_bw(base_size=8)+
+  xlab("Treatment") +
+  ylab("Mean Function")
+```
+
+```{r}
+organizedchartSoil <-melt(organizedchart[,c(4,13:20)], id.vars="soil")
+```
+
+```{r}
+organizedchartTreat <-melt(organizedchart[,c(3,13:20)], id.vars="treatment")
+```
+
+```{r}
+organizedchartTime <-melt(organizedchart[,c(5,13:20)], id.vars="timepoint")
+```
+
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("Soil Fraction") +
+  ylab("Standard Mean")
+```
+
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=timepoint, y=value),data=organizedchartTime)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("Time Point") +
+  ylab("Standard mean")
+```
+
+```{r fig.width=12, fig.height=6}
+ggplot(aes(x=treatment, y=value),data=organizedchartTreat)+geom_boxplot(size=2)+
+  facet_grid(~variable) +
+  theme_bw(base_size=15)+
+  xlab("Treatment") +
+  ylab("Standard mean")
+```
+
+<!-- Mean Function by Treatment suggests no statistically significant difference between Heating and Control -->
+
+```{r}
+TreatmentFit<-lm(meanFunction ~ treatment, data=organizedchart)
+anova(TreatmentFit)
+summary(TreatmentFit)
+```
+<!-- Mean Function by Soil Fraction suggests a significant difference between the Organic and Mineral horizons -->
+
+```{r}
+SoilFit<-lm(meanFunction ~ soil, data=organizedchart)
+anova(SoilFit)
+summary(SoilFit)
+```
+<!-- Mean Function by Timepoint suggests almost no statistically significant difference between timepoints 2 (June 3) and 6 (Octorber 28) -->
+
+```{r}
+TimeFit<-lm(meanFunction ~ timepoint, data=organizedchart)
+anova(TimeFit)
+summary(TimeFit)
+```
+
