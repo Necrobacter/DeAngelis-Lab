@@ -24,6 +24,9 @@ library(reshape2)
 ```{r}
 lipid <- read.csv("hf303-01-lipid-p.csv")
 enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
+kegg <- read.csv("ComparisonComa.csv")
+FungiBacCount <- read.csv("FungiBacCount.txt")
+
 ```
 
 <!-- Makes column and variable names uniform -->
