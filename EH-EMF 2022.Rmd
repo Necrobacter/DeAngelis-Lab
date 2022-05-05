@@ -32,13 +32,21 @@ library(reshape2)
 <!-- Test devtools -->
 <!-- Reads in CSV's. -->
 <!-- tcn is missing one sample number. Other df's have 48 entries (24 for each time point). Tcn has 23 (No T2 or T6), organized based on plot number. -->
+<!-- MegCazSpp = Megan Comparison of CAZy annotated reads -->
+<!-- MegKeggGeneralEnz = Megan Comparison of KEGG annotated reads Sorted by general metabolism With Previous node-->
+<!-- MegKeggGeneralEnz2 = Megan Comparison of KEGG annotated reads Sorted by general metabolism without previous node -->
+<!-- MegKeggGeneralEnzPws = Megan Comparison of KEGG annotated reads Sorted by general metabolic pathways without previous nodes-->
+
+
 
 ```{r}
 lipid <- read.csv("hf303-01-lipid-p.csv")
 enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
-kegg <- read.csv("ComparisonComa.csv")
-FungiBacCount <- read.csv("FungiBacCount.txt")
-
+MegCazSpp <- read.csv("meg_caz_spp.csv")
+MegKeggGeneralEnz <- read.csv("meg_keg_general_enz.csv")
+MegKeggGeneralEnz2 <- read.csv("meg_keg_general_enz_2.csv")
+MegKeggGeneralEnzPws <- read.csv("meg_keg_general_enz_3_pws.csv")
+MegKeggSpp <- read.csv("meg_keg_spp.csv")
 ```
 
 <!-- Makes column and variable names uniform -->
