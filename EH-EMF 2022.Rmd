@@ -7,8 +7,20 @@ editor_options:
 chunk_output_type: inline
 ---
 
+<!-- needed to install packages -->
 ```{r}
 library(devtools)
+```
+
+
+<!-- packages needed -->
+```{r}
+install_github("cran/vegetarian")
+install_github("https://github.com/jebyrnes/multifunc")
+```
+
+
+```{r}
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
