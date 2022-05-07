@@ -4,6 +4,7 @@ author: "Eddy Hernandez"
 date: "Today"
 output: html_document
 editor_options: 
+  chunk_output_type: console
 chunk_output_type: inline
 ---
 
@@ -12,16 +13,16 @@ chunk_output_type: inline
 library(devtools)
 ```
 
-
 <!-- packages needed -->
 ```{r}
 install_github("cran/vegetarian")
 install_github("https://github.com/jebyrnes/multifunc")
+install.packages("vegan")
 ```
-
 
 ```{r}
 library(dplyr)
+library(vegan)
 library(ggplot2)
 library(tidyverse)
 library(multifunc)
@@ -32,21 +33,11 @@ library(reshape2)
 <!-- Test devtools -->
 <!-- Reads in CSV's. -->
 <!-- tcn is missing one sample number. Other df's have 48 entries (24 for each time point). Tcn has 23 (No T2 or T6), organized based on plot number. -->
-<!-- MegCazSpp = Megan Comparison of CAZy annotated reads -->
-<!-- MegKeggGeneralEnz = Megan Comparison of KEGG annotated reads Sorted by general metabolism With Previous node-->
-<!-- MegKeggGeneralEnz2 = Megan Comparison of KEGG annotated reads Sorted by general metabolism without previous node -->
-<!-- MegKeggGeneralEnzPws = Megan Comparison of KEGG annotated reads Sorted by general metabolic pathways without previous nodes-->
-
-
 
 ```{r}
 lipid <- read.csv("hf303-01-lipid-p.csv")
 enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
-MegCazSpp <- read.csv("meg_caz_spp.csv")
-MegKeggGeneralEnz <- read.csv("meg_keg_general_enz.csv")
-MegKeggGeneralEnz2 <- read.csv("meg_keg_general_enz_2.csv")
-MegKeggGeneralEnzPws <- read.csv("meg_keg_general_enz_3_pws.csv")
-MegKeggSpp <- read.csv("meg_keg_spp.csv")
+keggez <- read.csv("KeggENZwID.csv")
 ```
 
 <!-- Makes column and variable names uniform -->
@@ -90,6 +81,19 @@ enzOrg <- subset(enzOrg, select = c(qw(plot,treatment,soil,timepoint,BG,CBH,BX,N
 enzOrg$ID <- as.factor(paste(enzOrg$treatment, enzOrg$soil,enzOrg$timepoint,enzOrg$plot,sep = "." ))
 lipidSimp$ID <- as.factor(paste(lipidSimp$treatment, lipidSimp$soil,lipidSimp$timepoint,lipidSimp$plot,sep = "." ))
 ```
+<!-- KEGG Enzyme organization and set up for Shannons H. 
+keggezwide is a dataframe of keggez where columns are rows and rows are columns
+rowtovarname is a vector containing the enz names
+colnames changes keggezwide column names to match the enzyme they represent-->
+```{r}
+keggezwide <- as.data.frame(t(keggez))
+rowtovarname<- as.string(keggezwide[1,])
+colnames(keggezwide) <- rowtovarname
+keggezwide <- keggezwide[-c(1),]
+keggezwide <- sapply(keggezwide, as.numeric)
+ID <- colnames(keggez[,2:30])
+keggezwide <- cbind(ID, keggezwide)
+```
 
 ```{r}
 organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)], by = "ID")
@@ -99,29 +103,6 @@ organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)], by = "ID")
 organizedchartTreat <-melt(organizedchart[,c(3,6:12)], id.vars="treatment")
 organizedchartSoil <-melt(organizedchart[,c(4,6:12)], id.vars="soil")
 organizedchartTime <-melt(organizedchart[,c(5,6:12)], id.vars="timepoint")
-```
-
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=2)+
-  facet_grid(~variable) +
-  theme_bw(base_size=15)+
-  xlab("Horizon") +
-  ylab("Standard mean")
-```
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=treatment, y=value),data=organizedchartTreat)+geom_boxplot(size=2)+
-  facet_grid(~variable) +
-  theme_bw(base_size=15)+
-  xlab("treatment") +
-  ylab("Standard mean")
-```
-
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=timepoint, y=value),data=organizedchartTime)+geom_boxplot(size=2)+
-  facet_grid(~variable) +
-  theme_bw(base_size=15)+
-  xlab("Time Point") +
-  ylab("Standard mean")
 ```
 <!-- EMF chart from all functions and variables. -->
 
@@ -134,6 +115,20 @@ ggplot(aes(x=treatment, y=meanFunction),data=organizedchart)+geom_boxplot(size=1
   theme_bw(base_size=8)+
   xlab("Treatment") +
   ylab("Mean Function")
+```
+
+<!-- Shannons H for MetaT, -(1) = omit column 1 -->
+<!-- Original output gave "diver", a shannons H for all enzymes and not samples. -->
+
+```{r}
+diver <- diversity(keggez[,-(1)])
+diver2 <- diversity(keggezwide)
+```
+
+<!-- Pielous J -->
+
+```{r}
+
 ```
 
 ```{r}
