@@ -87,12 +87,12 @@ rowtovarname is a vector containing the enz names
 colnames changes keggezwide column names to match the enzyme they represent-->
 ```{r}
 keggezwide <- as.data.frame(t(keggez))
-rowtovarname<- as.string(keggezwide[1,])
+rowtovarname<- as.vector(keggezwide[1,])
 colnames(keggezwide) <- rowtovarname
 keggezwide <- keggezwide[-c(1),]
-keggezwide <- sapply(keggezwide, as.numeric)
 ID <- colnames(keggez[,2:30])
 keggezwide <- cbind(ID, keggezwide)
+keggezwide <- sapply(keggezwide[, 2:5309], as.numeric)
 ```
 
 ```{r}
@@ -118,18 +118,16 @@ ggplot(aes(x=treatment, y=meanFunction),data=organizedchart)+geom_boxplot(size=1
 ```
 
 <!-- Shannons H for MetaT, -(1) = omit column 1 -->
-<!-- Original output gave "diver", a shannons H for all enzymes and not samples. -->
+<!-- Original output gave "diver", a Shannon H for all enzymes and not samples. -->
 
 ```{r}
-diver <- diversity(keggez[,-(1)])
-diver2 <- diversity(keggezwide)
+ShanDiv <- diversity(keggez[,-(1)])
+ShanDiv2 <- diversity(keggezwide)
+species <- apply(keggezwide>0,1,sum)
+PielousEven <- diversity(keggezwide, index = "simpson")/log(ShanDiv)
 ```
 
 <!-- Pielous J -->
-
-```{r}
-
-```
 
 ```{r}
 organizedchartSoil <-melt(organizedchart[,c(4,13:20)], id.vars="soil")
@@ -167,21 +165,17 @@ ggplot(aes(x=treatment, y=value),data=organizedchartTreat)+geom_boxplot(size=2)+
   ylab("Standard mean")
 ```
 
-<!-- Mean Function by Treatment suggests no statistically significant difference between Heating and Control -->
-
 ```{r}
 TreatmentFit<-lm(meanFunction ~ treatment, data=organizedchart)
 anova(TreatmentFit)
 summary(TreatmentFit)
 ```
-<!-- Mean Function by Soil Fraction suggests a significant difference between the Organic and Mineral horizons -->
 
 ```{r}
 SoilFit<-lm(meanFunction ~ soil, data=organizedchart)
 anova(SoilFit)
 summary(SoilFit)
 ```
-<!-- Mean Function by Timepoint suggests almost no statistically significant difference between timepoints 2 (June 3) and 6 (Octorber 28) -->
 
 ```{r}
 TimeFit<-lm(meanFunction ~ timepoint, data=organizedchart)
