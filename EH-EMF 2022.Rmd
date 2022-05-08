@@ -81,33 +81,44 @@ enzOrg <- subset(enzOrg, select = c(qw(plot,treatment,soil,timepoint,BG,CBH,BX,N
 enzOrg$ID <- as.factor(paste(enzOrg$treatment, enzOrg$soil,enzOrg$timepoint,enzOrg$plot,sep = "." ))
 lipidSimp$ID <- as.factor(paste(lipidSimp$treatment, lipidSimp$soil,lipidSimp$timepoint,lipidSimp$plot,sep = "." ))
 ```
+
 <!-- KEGG Enzyme organization and set up for Shannons H. 
 keggezwide is a dataframe of keggez where columns are rows and rows are columns
 rowtovarname is a vector containing the enz names
 colnames changes keggezwide column names to match the enzyme they represent-->
+
 ```{r}
 keggezwide <- as.data.frame(t(keggez))
-rowtovarname<- as.vector(keggezwide[1,])
+rowtovarname <- as.factor(keggezwide[1,])
 colnames(keggezwide) <- rowtovarname
 keggezwide <- keggezwide[-c(1),]
-ID <- colnames(keggez[,2:30])
-keggezwide <- cbind(ID, keggezwide)
-keggezwide <- sapply(keggezwide[, 2:5309], as.numeric)
+keggezwide <- as.data.frame(sapply(keggezwide, as.numeric))
+ID <- as.data.frame(as.factor(colnames(keggez[,2:30])))
+colnames(ID) <- "ID"
+keggezwide <- cbind.data.frame(ID, keggezwide)
+```
+
+<!-- Shannons H for MetaT, -(1) = omit column 1 -->
+<!-- Original output gave "diver", a Shannon H for all enzymes and not samples.-->
+
+```{r}
+ShanDiv2 <- as.data.frame(diversity(keggez[,-(1)]))
+ShanDiv <- as.data.frame(diversity(keggezwide[,-(1)]))
+ShanDiv <- cbind.data.frame(ID, ShanDiv)
+colnames(ShanDiv) <- c("ID", "ShannonsH")
+PielousEven <-  as.data.frame(diversity(keggezwide[,-(1)], index = "simpson")/log(specnumber(keggezwide[,-(1)])))
+PielousEven <- cbind.data.frame(ID, PielousEven)
+colnames(PielousEven) <- c("ID", "PielousJ")
 ```
 
 ```{r}
-organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)], by = "ID")
-```
-
-```{r}
+organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)],by = "ID")
 organizedchartTreat <-melt(organizedchart[,c(3,6:12)], id.vars="treatment")
 organizedchartSoil <-melt(organizedchart[,c(4,6:12)], id.vars="soil")
 organizedchartTime <-melt(organizedchart[,c(5,6:12)], id.vars="timepoint")
-```
-<!-- EMF chart from all functions and variables. -->
-
-```{r}
-organizedchart<-cbind(organizedchart, getStdAndMeanFunctions(organizedchart ,c("BG","CBH","BX","NAG","PO","HPO","lipidp.dry")))
+organizedchart <-cbind(organizedchart, getStdAndMeanFunctions(organizedchart ,c("BG","CBH","BX","NAG","PO","HPO","lipidp.dry")))
+organizedchart <- merge(organizedchart,ShanDiv,by = "ID", all.x = FALSE)
+organizedchart <- merge(organizedchart,PielousEven,by = "ID", all.x = FALSE)
 ```
 
 ```{r fig.width=1, fig.height=1 }
@@ -117,17 +128,13 @@ ggplot(aes(x=treatment, y=meanFunction),data=organizedchart)+geom_boxplot(size=1
   ylab("Mean Function")
 ```
 
-<!-- Shannons H for MetaT, -(1) = omit column 1 -->
-<!-- Original output gave "diver", a Shannon H for all enzymes and not samples. -->
-
-```{r}
-ShanDiv <- diversity(keggez[,-(1)])
-ShanDiv2 <- diversity(keggezwide)
-species <- apply(keggezwide>0,1,sum)
-PielousEven <- diversity(keggezwide, index = "simpson")/log(ShanDiv)
+```{r fig.width=1, fig.height=1 }
+ggplot(aes(x=ShannonsH, y=meanFunction),data=organizedchart)+geom_point(size=2)+
+  geom_smooth(method="lm", se=F) +
+  theme_bw(base_size=8)+
+  xlab("Shannons H") +
+  ylab("Mean Function")
 ```
-
-<!-- Pielous J -->
 
 ```{r}
 organizedchartSoil <-melt(organizedchart[,c(4,13:20)], id.vars="soil")
@@ -142,9 +149,9 @@ organizedchartTime <-melt(organizedchart[,c(5,13:20)], id.vars="timepoint")
 ```
 
 ```{r fig.width=12, fig.height=6}
-ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=2)+
+ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=1)+
   facet_grid(~variable) +
-  theme_bw(base_size=15)+
+  theme_bw(base_size=10)+
   xlab("Soil Fraction") +
   ylab("Standard Mean")
 ```
