@@ -33,9 +33,12 @@ library(reshape2)
 # Reads in CSV's.
 # tcn is missing one sample number. Other df's have 48 entries (24 for each time point). Tcn has 23 (No T2 or T6), organized based on plot number.
 
+# One sample from "KeggENZwID" was removed because it was empty.
+
 lipid <- read.csv("hf303-01-lipid-p.csv")
 enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
 keggez <- read.csv("KeggENZwID.csv")
+keggezOld <- read.csv("KeggENZwIDold.csv")
 
 # Makes column and variable names uniform
 
@@ -56,7 +59,7 @@ varIdxEnz <- which(names(enzymeAct) %in% vars)
 varIdxLip <- which(names(lipid) %in% vars)
 plotorder <- c
 
-# Subsets data frame by their time point
+# Subsets data frame by their time point, T2 = June, T6 = October
 
 enzymeSimp <- subset(enzymeAct, select = varIdxEnz, enzymeAct$timepoint=="T2" | enzymeAct$timepoint == "T6")
 lipidSimp <- subset(lipid, select = varIdxLip, lipid$timepoint == "T2" | lipid$timepoint == "T6")
@@ -78,13 +81,14 @@ rowtovarname <- as.factor(keggezwide[1,])
 colnames(keggezwide) <- rowtovarname
 keggezwide <- keggezwide[-c(1),]
 keggezwide <- as.data.frame(sapply(keggezwide, as.numeric))
-ID <- as.data.frame(as.factor(colnames(keggez[,2:30])))
+ID <- as.data.frame(as.factor(colnames(keggez[,2:29])))
 colnames(ID) <- "ID"
 keggezwide <- cbind.data.frame(ID, keggezwide)
 
 # Shannons H for MetaT, -(1) = omit column 1. Original output gave "ShanDiv2", a Shannon H for all enzymes and not samples.
 
-ShanDiv2 <- as.data.frame(diversity(keggez[,-(1)]))
+ShanDiv2 <- as.data.frame(diversity(keggezOld[,-(1)])) 
+# Shannon Diversity calculated using keggez df
 ShanDiv <- as.data.frame(diversity(keggezwide[,-(1)]))
 ShanDiv <- cbind.data.frame(ID, ShanDiv)
 colnames(ShanDiv) <- c("ID", "ShannonsH")
@@ -98,68 +102,70 @@ organizedchart <- merge(enzOrg,lipidSimp[,c(5,6)],by = "ID")
 
 # Gets the mean function of the enzyme and lipid samples in df "organizedchart", adds result to the end of "organizedchart"
 
-organizedchart <-cbind(organizedchart, getStdAndMeanFunctions(organizedchart ,c("BG","CBH","BX","NAG","PO","HPO","lipidp.dry")))
+organizedchart <-cbind(organizedchart, getStdAndMeanFunctions(organizedchart ,c("BG","CBH","BX","NAG","PO","HPO","lipidp.dry"), standardizeZScore))
 
 # Mergens diversity index' "ShanDiv" for Shannon alpha diversity and "PielousEven" for Pielous evenness
 
 organizedchart <- merge(organizedchart,ShanDiv,by = "ID", all.x = FALSE)
 organizedchart <- merge(organizedchart,PielousEven,by = "ID", all.x = FALSE)
+
 ```
 
 ```{r fig.width=1, fig.height=1 }
-ggplot(aes(x=treatment, y=meanFunction),data=organizedchart)+geom_boxplot(size=1)+
-  theme_bw(base_size=8)+
-  xlab("Treatment") +
-  ylab("Mean Function")
-```
-
-```{r fig.width=1, fig.height=1 }
-ggplot(aes(x=ShannonsH, y=meanFunction),data=organizedchart)+geom_point(size=2)+
-  geom_smooth(method="lm", se=F) +
-  theme_bw(base_size=8)+
+ggplot(organizedchart, aes( ShannonsH, meanFunction))+geom_point(size = 1)+ geom_line()
+  theme_bw(base_size=5)+
   xlab("Shannons H") +
-  ylab("Mean Function")
-```
-
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=soil, y=value),data=organizedchartSoil)+geom_boxplot(size=1)+
-  facet_grid(~variable) +
-  theme_bw(base_size=10)+
-  xlab("Soil Fraction") +
-  ylab("Standard Mean")
-```
-
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=timepoint, y=value),data=organizedchartTime)+geom_boxplot(size=2)+
-  facet_grid(~variable) +
-  theme_bw(base_size=15)+
-  xlab("Time Point") +
-  ylab("Standard mean")
-```
-
-```{r fig.width=12, fig.height=6}
-ggplot(aes(x=treatment, y=value),data=organizedchartTreat)+geom_boxplot(size=2)+
-  facet_grid(~variable) +
-  theme_bw(base_size=15)+
-  xlab("Treatment") +
-  ylab("Standard mean")
+  ylab("System Mean Function")
 ```
 
 ```{r}
-TreatmentFit<-lm(meanFunction ~ treatment, data=organizedchart)
-anova(TreatmentFit)
-summary(TreatmentFit)
+
+# Plots Shannons H (X) by Mean Function (Y), seperates color points by treatment, geom smooth adds a linear model to chart. Facet wrap separates charts by horizon
+
+organizedchart %>%
+    ggplot(aes(ShannonsH, meanFunction, 
+               colour = treatment)) +
+    geom_point( size = 3, alpha = 0.5) +
+    geom_smooth(method = lm, se = T) +
+    facet_wrap(~soil) +
+    labs(x = "Enzymatic Diversity", y = "Multifunctionality")
 ```
 
 ```{r}
-SoilFit<-lm(meanFunction ~ soil, data=organizedchart)
-anova(SoilFit)
-summary(SoilFit)
+
+# Plots Shannons H (X) by Mean Function (Y), seperates color points by treatment, geom smooth adds a linear model to chart. Facet wrap separates charts by timepoint
+
+organizedchart %>%
+    ggplot(aes(ShannonsH, meanFunction, 
+               colour = treatment)) +
+    geom_point( size = 3, alpha = 0.5) +
+    geom_smooth(method = lm, se = T) +
+    facet_wrap(~ timepoint) +
+    labs(x = "Enzymatic Diversity", y = "Multifunctionality")
 ```
 
 ```{r}
-TimeFit<-lm(meanFunction ~ timepoint, data=organizedchart)
-anova(TimeFit)
-summary(TimeFit)
+
+# Plots Pielous J (X) by Mean Function (Y), separates color points by treatment, geom smooth adds a linear model to chart. Facet wrap separates charts by horizon
+
+organizedchart %>%
+    ggplot(aes( PielousJ, meanFunction, 
+               colour = treatment)) +
+    geom_point( size = 3, alpha = 0.5) +
+    geom_smooth(method = lm, se = T) +
+    facet_wrap(~timepoint) +
+    labs(x = "Enzymatic Evenness", y = "Multifunctionality")
 ```
 
+```{r}
+
+# Plots Pielous J (X) by Mean Function (Y), separates color points by treatment, geom smooth adds a linear model to chart. Facet wrap separates charts by timepoint
+
+organizedchart %>%
+    ggplot(aes( PielousJ, meanFunction, 
+               colour = treatment)) +
+    geom_point( size = 3, alpha = 0.5) +
+    geom_smooth(method = lm, se = T) +
+    facet_wrap(~soil) +
+    labs(x = "Enzymatic Evenness", y = "Multifunctionality")
+```
