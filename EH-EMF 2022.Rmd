@@ -1,5 +1,5 @@
 ---
-title: "EMF index"
+title: "EMF index'"
 author: "Eddy Hernandez"
 date: "Today"
 output: html_document
@@ -38,7 +38,6 @@ library(reshape2)
 lipid <- read.csv("hf303-01-lipid-p.csv")
 enzymeAct <- read.csv("hf303-06-enzyme-activity.csv")
 keggez <- read.csv("KeggENZwID.csv")
-keggezOld <- read.csv("KeggENZwIDold.csv")
 
 # Makes column and variable names uniform
 
@@ -57,7 +56,7 @@ enzymeAct <- enzymeAct[,c("sample.id","treatment","soil","plot","timepoint","doy
 vars <- qw(plot,treatment,soil,timepoint,sample.id,enzyme,eea,lipidp.dry,BG,CBH,BX,NAG,PO,HPO)
 varIdxEnz <- which(names(enzymeAct) %in% vars)
 varIdxLip <- which(names(lipid) %in% vars)
-plotorder <- c
+plotorder <- c(1,3,5,6,8,9,10,12,13,15,16,17)
 
 # Subsets data frame by their time point, T2 = June, T6 = October
 
@@ -85,9 +84,8 @@ ID <- as.data.frame(as.factor(colnames(keggez[,2:29])))
 colnames(ID) <- "ID"
 keggezwide <- cbind.data.frame(ID, keggezwide)
 
-# Shannons H for MetaT, -(1) = omit column 1. Original output gave "ShanDiv2", a Shannon H for all enzymes and not samples.
+# Shannons H for MetaT, -(1) = omit column 1
 
-ShanDiv2 <- as.data.frame(diversity(keggezOld[,-(1)])) 
 # Shannon Diversity calculated using keggez df
 ShanDiv <- as.data.frame(diversity(keggezwide[,-(1)]))
 ShanDiv <- cbind.data.frame(ID, ShanDiv)
@@ -111,15 +109,7 @@ organizedchart <- merge(organizedchart,PielousEven,by = "ID", all.x = FALSE)
 
 ```
 
-```{r fig.width=1, fig.height=1 }
-ggplot(organizedchart, aes( ShannonsH, meanFunction))+geom_point(size = 1)+ geom_line()
-  theme_bw(base_size=5)+
-  xlab("Shannons H") +
-  ylab("System Mean Function")
-```
-
 ```{r}
-
 # Plots Shannons H (X) by Mean Function (Y), seperates color points by treatment, geom smooth adds a linear model to chart. Facet wrap separates charts by horizon
 
 organizedchart %>%
@@ -129,6 +119,7 @@ organizedchart %>%
     geom_smooth(method = lm, se = T) +
     facet_wrap(~soil) +
     labs(x = "Enzymatic Diversity", y = "Multifunctionality")
+
 ```
 
 ```{r}
@@ -168,4 +159,27 @@ organizedchart %>%
     geom_smooth(method = lm, se = T) +
     facet_wrap(~soil) +
     labs(x = "Enzymatic Evenness", y = "Multifunctionality")
+```
+
+```{r}
+
+# Prints a MANOVA for ShannonsH; Do Richness and Mean Function differ across soil horizon?
+
+ShanSoil <- manova( cbind(meanFunction, ShannonsH) ~ soil, data = organizedchart)
+capture.output(summary(ShanSoil), file = "ShanSoilMan.csv")
+
+# Prints a MANOVA for Shannons H; Do Richness and Mean Function differ by timepoint?
+
+ShanTime <- manova( cbind(meanFunction, ShannonsH) ~ timepoint, data = organizedchart)
+capture.output(summary(ShanTime), file = "ShanTimeMan.csv")
+
+# Prints a MANOVA for Pielous J; Do Evenness and Mean Function differ across soil horizon?
+
+PieSoil <- manova( cbind(meanFunction, PielousJ) ~ soil, data = organizedchart)
+capture.output(summary(PieSoil), file = "PieSoilMan.csv")
+
+# Prints a MANOVA for Pielous J; Do Evenness and Mean Function differ across timepoint?
+
+PieTime <- manova( cbind(meanFunction,  PielousJ) ~ timepoint, data = organizedchart)
+capture.output(summary(PieTime), file = "PietimeMan.csv")
 ```

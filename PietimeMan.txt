@@ -1,0 +1,3 @@
+          Df   Pillai approx F num Df den Df Pr(>F)
+timepoint  1 0.043872  0.57356      2     25 0.5708
+Residuals 26                                       
